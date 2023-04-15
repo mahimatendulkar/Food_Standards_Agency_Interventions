@@ -1,5 +1,5 @@
 # Food_Standards_Agency_Interventions
-Rmd code that fulfills below requirements:
+R-Markdown code that fulfills below requirements:
 This report fulfills the requests of a panel of politicians and managers of the Food Standards Agency UK who want to understand whether establishments successfully respond to intervention actions. The list of demands is summarized below:
 
 1. Plot the percentage distribution of enforcement actions successfully achieved for establishments all rated combined and separately across the Local Authorities.

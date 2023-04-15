@@ -12,11 +12,7 @@ output:
     toc_depth: '3'
 ---
 
-This is to certify that the work I am submitting is my own. All external references and sources are clearly acknowledged and identified within the contents. I am aware of the University of Warwick regulation concerning plagiarism and collusion.
-
-No substantial part(s) of the work submitted here has also been submitted by me in other assessments for accredited courses of study, and I acknowledge that if this has been done an appropriate reduction in the mark I might otherwise have received will be made.
-
-# Question 1: Food Standards Agency Interventions
+# Food Standards Agency Interventions
 
 ## Section 1
 This report fulfills the requests of a panel of politicians and managers of the Food Standards Agency who want to understand whether establishments successfully respond to intervention actions. The list of demands is summarized below:

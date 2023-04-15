@@ -1,0 +1,359 @@
+---
+title: 'Business Statistics'
+author: 'Mahima Tendulkar'
+output:
+  html_document:
+    toc: yes
+    toc_depth: 3
+    fig_width: 10 
+    fig_height: 6
+    
+---
+# Question 1: Food Standards Agency Interventions
+
+## Section 1
+This report fulfills the requests of a panel of politicians and managers of the Food Standards Agency who want to understand whether establishments successfully respond to intervention actions. The list of demands is summarized below:
+
+1. Plot the percentage distribution of enforcement actions successfully achieved for establishments all rated combined and separately across the Local Authorities.
+
+2. Find out whether employing more professional enforcement officers increases the likelihood of establishments successfully responding to enforcement actions.
+
+3. Examine the relationship between the proportion of successful responses and the number of employees as a proportion of the number of establishments in the local authority.
+
+Below is the data dictionary of the dataset used for analysis.
+
+
+### Data Dictionary
+
+Variable | Description
+------------- | -------------
+Country | Name of the country
+LAType | Type of Local Authority
+LAName | Name of the Local Authority
+Totalestablishments(includingnotyetrated&outside) | Total Number of establishments that serve food
+Establishmentsnotyetratedforintervention | Establishments not yet rated for intervention
+Establishmentsoutsidetheprogramme | Establishments outside the programme
+Total%ofBroadlyCompliantestablishmentsratedA-E | Total percentage of broadly compliant establishments rated A to E
+Total%ofBroadlyCompliantestablishments(includingnotyetrated) | Total percentage of broadly compliant establishments, including those not rated yet
+Aratedestablishments | A-rated establishments
+Total%ofBroadlyCompliantestablishments-A | Total percentage of broadly compliant establishments rated as A
+Bratedestablishments | B-rated establishments
+Total%ofBroadlyCompliantestablishments-B | Total percentage of broadly compliant establishments rated as B
+Cratedestablishments | C-rated establishments
+Total%ofBroadlyCompliantestablishments-C | Total percentage of broadly compliant establishments rated as C
+Dratedestablishments | D-rated establishments
+Total%ofBroadlyCompliantestablishments-D | Total percentage of broadly compliant establishments rated as D
+Eratedestablishments | E-rated establishments
+Total%ofBroadlyCompliantestablishments-E | Total percentage of broadly compliant establishments rated as E
+Total%ofInterventionsachieved(premisesratedA-E) | Total Percentage of intervention achieved where the premises is rated A to E
+Total%ofInterventionsachieved-premisesratedA | Total percentage of intervention achieved where the premises is rated A
+Total%ofInterventionsachieved-premisesratedB | Total percentage of intervention achieved where the premises is rated B
+Total%ofInterventionsachieved-premisesratedC | Total percentage of intervention achieved where the premises is rated C
+Total%ofInterventionsachieved-premisesratedD | Total percentage of intervention achieved where the premises is rated D
+Total%ofInterventionsachieved-premisesratedE | Total percentage of intervention achieved where the premises is rated E
+Total%ofInterventionsachieved-premisesnotyetrated | Total Percentage of intervention achieved where the premises is not rated
+Totalnumberofestablishmentssubjecttoformalenforcementactions-Voluntaryclosure | Total number of establishments subject to formal enforcement actions of Voluntaryclosure
+Totalnumberofestablishmentssubjecttoformalenforcementactions-Seizure,detention&surrenderoffood | Total number of establishments subject to formal enforcement actions like Seizure, detention & surrender of food
+Totalnumberofestablishmentssubjecttoformalenforcementactions-Suspension/revocationofapprovalorlicence | Total number of establishments subject to formal enforcement actions where license or approval is suspended/revoked 
+Totalnumberofestablishmentssubjecttoformalenforcementactions-Hygieneemergencyprohibitionnotice | Total number of establishments subject to formal enforcement actions of where Hygiene emergency prohibition notice is given
+Totalnumberofestablishmentssubjecttoformalenforcementactions-Prohibitionorder | Total number of establishments subject to formal enforcement actions where Prohibition order is given
+Totalnumberofestablishmentssubjecttoformalenforcementactions-Simplecaution | Total number of establishments subject to formal enforcement actions where a Simple caution warning is given
+Totalnumberofestablishmentssubjecttoformalenforcementactions-Hygieneimprovementnotices | Total number of establishments subject to formal enforcement actions where Hygiene improvement notices are sent
+Totalnumberofestablishmentssubjecttoformalenforcementactions-Remedialaction&detentionnotices | Total number of establishments subject to formal enforcement actions where Remedial action & detention notices are sent
+TotalnumberofestablishmentssubjecttoWrittenwarnings | Total number of establishments subject to Written warnings
+Totalnumberofestablishmentssubjecttoformalenforcementactions-Prosecutionsconcluded | Total number of establishments subject to formal enforcement actions where prosecutions concluded
+ProfessionalFullTimeEquivalentPosts-occupied * | Professional Full Time Equivalent Posts  that are occupied 
+---
+
+```{r setup, message=FALSE}
+# R Packages for Question1 and Question2
+library(tidyverse)
+library(dplyr)
+options(width = 600)
+library(data.table) # for as.data.table()
+library(emmeans) # for emmeans() and pairs()
+library(gridExtra) # for grid.arrange()
+library(knitr) # for kable()
+library(kableExtra) # for cell_spec()
+library(ggplot2)
+library(Hmisc) # for correlation functions
+
+```
+
+### Data Read and Preparation
+```{r, warning=FALSE, message=FALSE}
+
+#Read data for question 1:
+data.food <- read_csv("2019-20-enforcement-data-food-hygiene.csv")
+
+#Summary
+#summary(data.food)
+
+#After observing summary, it was found that data is missing entirely from 6 rows therefore needs to be removed.
+
+#Omit Columns with NA values
+data.food.cleaned <- na.omit(data.food)
+
+
+#Structure of dataset
+#str(data.food)
+
+#Generate a vector to store the column names to be converted as factors
+columns <- c("Country", "LAType")
+
+#Convert to factors
+data.food.cleaned[columns] <- lapply(data.food.cleaned[columns],as.factor)
+
+#Check levels
+#levels(data.food$Country)
+#levels(data.food$LAType)
+
+#Clean the column names
+#Replace the % symbol by "percentage"
+names(data.food.cleaned) <- gsub("%", "percentage", names(data.food.cleaned))
+
+#Replace the Symbols '('  and  '-' with '_'
+names(data.food.cleaned) <- gsub("[(]", "_", names(data.food.cleaned))
+names(data.food.cleaned) <- gsub("[)]", "", names(data.food.cleaned))
+
+#Replace the Symbols ')' and '*' with blank
+names(data.food.cleaned) <- gsub("[*]", "", names(data.food.cleaned))
+names(data.food.cleaned) <- gsub("-", "_", names(data.food.cleaned))
+names(data.food.cleaned) <- gsub(",", "_", names(data.food.cleaned))
+
+#Remove the remaining special characters
+names(data.food.cleaned) = make.names(names(data.food.cleaned))
+
+#Replace the NP values as '0' in column TotalpercentageofBroadlyCompliantestablishments_A
+data.food.cleaned$TotalpercentageofBroadlyCompliantestablishments_A <-  replace(data.food.cleaned$TotalpercentageofBroadlyCompliantestablishments_A, data.food.cleaned$TotalpercentageofBroadlyCompliantestablishments_A =='NP' , 0 ) 
+
+#Replace the NR values as '0' in column TotalpercentageofInterventionsachieved_premisesratedA
+data.food.cleaned$TotalpercentageofInterventionsachieved_premisesratedA <-  replace(data.food.cleaned$TotalpercentageofInterventionsachieved_premisesratedA, data.food.cleaned$TotalpercentageofInterventionsachieved_premisesratedA =='NR' , 0 ) 
+  
+  
+#Convert both the columns above used as numeric
+data.food.cleaned$TotalpercentageofBroadlyCompliantestablishments_A <- as.numeric(data.food.cleaned$TotalpercentageofBroadlyCompliantestablishments_A)
+
+data.food.cleaned$TotalpercentageofInterventionsachieved_premisesratedA <- as.numeric(data.food.cleaned$TotalpercentageofInterventionsachieved_premisesratedA)
+
+```
+
+### Data Understanding
+```{r}
+#Create new columns for better data understanding
+data.food.cleaned <- data.food.cleaned %>%
+  mutate(data.food.cleaned, Total_No_of_Formal_Enforcements_Achieved = Totalnumberofestablishmentssubjecttoformalenforcementactions_Voluntaryclosure + Totalnumberofestablishmentssubjecttoformalenforcementactions_Suspension.revocationofapprovalorlicence + Totalnumberofestablishmentssubjecttoformalenforcementactions_Seizure_detention.surrenderoffood + Totalnumberofestablishmentssubjecttoformalenforcementactions_Hygieneemergencyprohibitionnotice + Totalnumberofestablishmentssubjecttoformalenforcementactions_Prohibitionorder + Totalnumberofestablishmentssubjecttoformalenforcementactions_Prosecutionsconcluded + Totalnumberofestablishmentssubjecttoformalenforcementactions_Simplecaution + Totalnumberofestablishmentssubjecttoformalenforcementactions_Hygieneimprovementnotices + Totalnumberofestablishmentssubjecttoformalenforcementactions_Remedialaction.detentionnotices) %>%
+  
+  mutate(data.food.cleaned,Total_No_of_Enforcements_Achieved = TotalnumberofestablishmentssubjecttoWrittenwarnings + Total_No_of_Formal_Enforcements_Achieved) %>%
+  
+  mutate(data.food.cleaned, Rated_Establishments= (Totalestablishments_includingnotyetrated.outside - Establishmentsnotyetratedforintervention - Establishmentsoutsidetheprogramme)) %>%
+  
+  mutate(data.food.cleaned,Total_number_of_interventions_on_A_to_E= 
+  round((TotalpercentageofInterventionsachieved_premisesratedA_E *Rated_Establishments)/100,digits=0 ))%>%
+  
+  mutate(data.food.cleaned, Total_number_of_interventions_on_A= 
+  round((TotalpercentageofInterventionsachieved_premisesratedA *Aratedestablishments)/100,digits=0 )) %>%
+  
+  mutate(data.food.cleaned, Total_number_of_interventions_on_B= 
+  round((TotalpercentageofInterventionsachieved_premisesratedB *Bratedestablishments)/100,digits=0 )) %>%
+  
+  mutate(data.food.cleaned, Total_number_of_interventions_on_C=
+  round((TotalpercentageofInterventionsachieved_premisesratedC *Cratedestablishments)/100,digits=0 )) %>%
+  
+  mutate(data.food.cleaned, Total_number_of_interventions_on_D= 
+  round((TotalpercentageofInterventionsachieved_premisesratedD *Dratedestablishments)/100,digits=0 )) %>%
+  
+  mutate(data.food.cleaned, Total_number_of_interventions_on_E= 
+  round((TotalpercentageofInterventionsachieved_premisesratedE *Eratedestablishments)/100,digits=0 )) %>%
+  
+  mutate(data.food.cleaned, Establishments_successfully_responded = Total_number_of_interventions_on_A_to_E - Total_No_of_Enforcements_Achieved ) %>%
+  
+  mutate(data.food.cleaned, Establishments_successfully_responded_to_warnings = TotalnumberofestablishmentssubjecttoWrittenwarnings - Total_No_of_Formal_Enforcements_Achieved) %>%
+  
+  mutate(data.food.cleaned, Proportion_of_FTE_per_establishment = (ProfessionalFullTimeEquivalentPosts_occupied./Totalestablishments_includingnotyetrated.outside))
+  
+
+#Group and Summaries the intervention information
+df_sum_mean <- data.food.cleaned %>% 
+  group_by(LAType) %>%
+  summarise(Total_Establishments= sum(Totalestablishments_includingnotyetrated.outside),
+            Arated= round(mean(TotalpercentageofInterventionsachieved_premisesratedA), digit=1),
+            Brated= round(mean(TotalpercentageofInterventionsachieved_premisesratedB), digit=1),
+            Crated= round(mean(TotalpercentageofInterventionsachieved_premisesratedC), digit=1),
+            Drated= round(mean(TotalpercentageofInterventionsachieved_premisesratedD), digit=1),
+            Erated= round(mean(TotalpercentageofInterventionsachieved_premisesratedE), digit=1),
+            Mean_prcnt_intven_Made_A_E_Rated = round(mean(TotalpercentageofInterventionsachieved_premisesratedA_E),digits = 1))
+
+print(as.data.table(df_sum_mean)) 
+
+
+```
+
+### Plots
+```{r, warning=FALSE, message=FALSE}
+#Plot for percentage distribution of enforcement actions successfully achieved across local authorities (All ratings)
+ggplot(data.food.cleaned) + geom_point(aes(LAName, TotalpercentageofInterventionsachieved_premisesratedA_E, colour = LAType)) + geom_hline(data=df_sum_mean, mapping=aes(yintercept=Mean_prcnt_intven_Made_A_E_Rated), linetype='dashed',colour="blue")+
+   geom_text(data=df_sum_mean, mapping=aes(0,Mean_prcnt_intven_Made_A_E_Rated,label = Mean_prcnt_intven_Made_A_E_Rated, hjust=-2 , vjust= -0.5)) +
+  facet_wrap("LAType")+ theme(
+        axis.text.x=element_blank()) + labs( x="Local Authority Name", y="Total % of interventions achieved for premises rated A to E", caption="Figure 1: Plot for A-E Rated Establishment") + ggtitle("% distribution of enforcement actions successfully achieved across LA's (All ratings)") + 
+  theme(plot.caption = element_text(size=10,hjust=0.5)) 
+
+```
+```{r , warning=FALSE, message=FALSE}
+#Plot for A-Rated Establishment
+ggplot(data.food.cleaned, mapping=aes(y=TotalpercentageofInterventionsachieved_premisesratedA, x=LAName)) + geom_point(mapping= aes(colour=LAType)) +
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())+ xlab("Local Authority Name") + ylab("Total % of interventions achieved for premises rated A") + ggtitle("% distribution of enforcement actions successfully achieved for establishments rated A") + labs(caption="Figure 2: Plot for A-Rated Establishment") + theme(plot.caption = element_text(size=10,hjust=0.5)) 
+  
+#Plot for B-Rated Establishment
+ggplot(data.food.cleaned) + geom_point(aes(y=TotalpercentageofInterventionsachieved_premisesratedB, x=LAName, colour=LAType)) +
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank()) + xlab("Local Authority Name") + ylab("Total % of interventions achieved for premises rated B") + ggtitle("% distribution of enforcement actions successfully achieved for establishments rated B")+ labs(caption="Figure 3: Plot for B-Rated Establishment") + theme(plot.caption = element_text(size=10,hjust=0.5)) 
+
+#Plot for C-Rated Establishment
+ggplot(data.food.cleaned) + geom_point(aes(y=TotalpercentageofInterventionsachieved_premisesratedC, x=LAName, colour=LAType)) +
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank()) +  xlab("Local Authority Name") + ylab("Total % of interventions achieved for premises rated C") + ggtitle("% distribution of enforcement actions successfully achieved for establishments rated C")+ labs(caption="Figure 4: Plot for C-Rated Establishment") + theme(plot.caption = element_text(size=10,hjust=0.5)) 
+
+#Plot for D-Rated Establishment
+ggplot(data.food.cleaned) + geom_point(aes(y=TotalpercentageofInterventionsachieved_premisesratedD, x=LAName, colour=LAType)) +
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank()) +  xlab("Local Authority Name") + ylab("Total % of interventions achieved for premises rated D") + ggtitle("% distribution of enforcement actions successfully achieved for establishments rated D") + labs(caption="Figure 5: Plot for D-Rated Establishment") + theme(plot.caption = element_text(size=10,hjust=0.5)) 
+
+#Plot for E-Rated Establishment
+ggplot(data.food.cleaned, mapping=aes(y=TotalpercentageofInterventionsachieved_premisesratedE, x=LAName)) + geom_point(mapping= aes(colour=LAType)) +
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank()) +  xlab("Local Authority Name") + ylab("Total % of interventions achieved for premises rated E") + ggtitle("% distribution of enforcement actions successfully achieved for establishments rated E") + labs(caption="Figure 6: Plot for E-Rated Establishment") + theme(plot.caption = element_text(size=10,hjust=0.5)) 
+
+
+```
+
+### Regression Models
+```{r , warning=FALSE, message=FALSE}
+
+#Request 2
+model1= lm (Establishments_successfully_responded ~ ProfessionalFullTimeEquivalentPosts_occupied., data=data.food.cleaned)
+
+summary(model1)
+
+#Request 3
+model2 = lm (TotalpercentageofInterventionsachieved_premisesratedA_E ~ Proportion_of_FTE_per_establishment, data=data.food.cleaned)
+summary(model2)
+
+#Plot for indicating the correlation for model1
+ggplot(data.food.cleaned, aes(y=Establishments_successfully_responded, x=ProfessionalFullTimeEquivalentPosts_occupied.)) + geom_point() + labs(x="Professional Full time equivalent posts occupied", y="Establishments that responded successfully", subtitle="The shaded area shows the 95% CI for the best-fitting regression line") + labs(caption="Figure 7: Plot for linear model for request 2") + theme(plot.caption = element_text(size=10,hjust=0.5)) + geom_smooth(method=lm)
+
+#plot for indicating the correlations for model2
+ggplot(data.food.cleaned, aes(y=TotalpercentageofInterventionsachieved_premisesratedA_E, x=Proportion_of_FTE_per_establishment)) + geom_point() + labs(x="ProfessionalFullTimeEquivalentPosts_occupied.", y="Establishments_successfully_responded_to_warnings", subtitle=" The shaded area shows the 95% CI for the best-fitting regression line") + labs(caption="Figure 8: Plot for linear model for request 3") + theme(plot.caption = element_text(size=10,hjust=0.5)) +geom_smooth(method=lm)
+
+#Anova for model comparison
+anova(model1, model2)
+
+```
+
+---
+
+## Section 2
+
+#### Introduction and brief data analysis
+This section presents the outcome of the analysis performed on the 2019-2020 Enforcement Data - Food Hygiene. There are a total of 353 observations and 36 columns containing information about each local authority in England, Wales, and Northern Ireland. The establishments within these areas were inspected to check whether they abided by food and safety laws while operating. These establishments were then rated based on their potential impact on public health (essentially a measure of how many people they could cause sickness to and how seriously, if they serve bad food). These ratings are letter grades from A – meaning the greatest potential impact – to E – the lowest potential impact upon public health. If the officers finds something seriously concerning, they took formal/informal enforcement action based on the severity of the issue. Formal enforcement actions include voluntary closures, seizure, and detention of food, revocation of approval/license, etc., and informal enforcement actions include written warnings.
+
+The data was analyzed, and the following data-preparation steps were taken:
+
+1. Data was missing for 6 of the Local Authorities. Therefore, these rows were omitted while doing the statistical analysis.
+
+2. The column names in the data had many special characters. These were replaced with names suitable for the R script.
+
+3. The column "TotalpercentageofBroadlyCompliantestablishments_A" had some values populated as "NP" for the authorities that had no A-rated establishments. These values were replaced with "0".
+
+4. The column "TotalpercentageofInterventionsachieved_premisesratedA" had some values populated as "NR" for the authorities that had no A-rated establishments. These values were replaced with "0".
+
+5. Data type of columns mentioned in steps 3 and 4 were changed to numeric.
+
+### Request 1: Plots for understanding the data distribution.
+
+As per the request from the authorities, further analysis was prepared.
+The plot below (Figure 1) shows the distribution percentage of enforcement actions successfully achieved (establishments rated A to E) across all the local authority types.
+
+```{r, echo=FALSE}
+#Plot for percentage distribution of enforcement actions successfully achieved across local authorities (All ratings)
+ggplot(data.food.cleaned) + geom_point(aes(LAName, TotalpercentageofInterventionsachieved_premisesratedA_E, colour = LAType)) + geom_hline(data=df_sum_mean, mapping=aes(yintercept=Mean_prcnt_intven_Made_A_E_Rated), linetype='dashed',colour="blue")+
+   geom_text(data=df_sum_mean, mapping=aes(0,Mean_prcnt_intven_Made_A_E_Rated,label = Mean_prcnt_intven_Made_A_E_Rated, hjust=-2 , vjust= -0.5)) +
+  facet_wrap("LAType")+ theme(
+        axis.text.x=element_blank()) + labs( x="Local Authority Name", y="Total % of interventions achieved for premises rated A to E", caption="Figure 1: Plot for A-E Rated Establishment") + ggtitle("% distribution of enforcement actions successfully achieved across LA's (All ratings)") + 
+  theme(plot.caption = element_text(size=10,hjust=0.5)) 
+
+```
+In the above plot, different colors indicate the different Local authority types. Each dot within the smaller grid represents the total percentage of interventions achieved for premises rated within that area (LAType) for each local authority. The dashed blue line and the value in each grid indicate the mean line and mean value, respectively. It can be observed that the district council has the highest number of local authorities within its area, and Welsh Unitary Authority has the highest mean percentage of interventions achieved (Rated A to E). 
+
+To further analyze the distribution of the total percentage of interventions achieved for premises rated A to E, separate visualizations were made as follows (Figures 2 to 6):
+
+#### Plot of A-Rated Establishment
+```{r, echo=FALSE}
+ggplot(data.food.cleaned, mapping=aes(y=TotalpercentageofInterventionsachieved_premisesratedA, x=LAName)) + geom_point(mapping= aes(colour=LAType)) +
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())+ xlab("Local Authority Name") + ylab("Total % of interventions achieved for premises rated A") + ggtitle("% distribution of enforcement actions successfully achieved for establishments rated A") + labs(caption="Figure 2: Plot for A-Rated Establishment") + theme(plot.caption = element_text(size=10,hjust=0.5)) 
+  
+```
+
+#### Plot of B-Rated Establishment
+```{r, echo=FALSE}
+ggplot(data.food.cleaned) + geom_point(aes(y=TotalpercentageofInterventionsachieved_premisesratedB, x=LAName, colour=LAType)) +
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank()) + xlab("Local Authority Name") + ylab("Total % of interventions achieved for premises rated B") + ggtitle("% distribution of enforcement actions successfully achieved for establishments rated B")+ labs(caption="Figure 3: Plot for B-Rated Establishment") + theme(plot.caption = element_text(size=10,hjust=0.5)) 
+```
+
+#### Plot of C-Rated Establishment
+```{r, echo=FALSE}
+ggplot(data.food.cleaned) + geom_point(aes(y=TotalpercentageofInterventionsachieved_premisesratedC, x=LAName, colour=LAType)) +
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank()) +  xlab("Local Authority Name") + ylab("Total % of interventions achieved for premises rated C") + ggtitle("% distribution of enforcement actions successfully achieved for establishments rated C")+ labs(caption="Figure 4: Plot for C-Rated Establishment") + theme(plot.caption = element_text(size=10,hjust=0.5)) 
+
+```
+
+#### Plot of D-Rated Establishment
+```{r, echo=FALSE}
+ggplot(data.food.cleaned) + geom_point(aes(y=TotalpercentageofInterventionsachieved_premisesratedD, x=LAName, colour=LAType)) +
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank()) +  xlab("Local Authority Name") + ylab("Total % of interventions achieved for premises rated D") + ggtitle("% distribution of enforcement actions successfully achieved for establishments rated D") + labs(caption="Figure 5: Plot for D-Rated Establishment") + theme(plot.caption = element_text(size=10,hjust=0.5)) 
+
+```
+
+
+#### Plot of E-Rated Establishment
+```{r, echo=FALSE}
+
+ggplot(data.food.cleaned, mapping=aes(y=TotalpercentageofInterventionsachieved_premisesratedE, x=LAName)) + geom_point(mapping= aes(colour=LAType)) +
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank()) +  xlab("Local Authority Name") + ylab("Total % of interventions achieved for premises rated E") + ggtitle("% distribution of enforcement actions successfully achieved for establishments rated E") + labs(caption="Figure 6: Plot for E-Rated Establishment") + theme(plot.caption = element_text(size=10,hjust=0.5)) 
+
+```
+
+It can be observed from the plot for A-rated establishments (Figure 2) that 100% of interventions are carried out in the majority of the local authorities. On the other hand, the points at 0% in the plot indicate that there are no A-rated establishments in their area. If these distributions are closely understood (Figure 2 to Figure 6), it's evident that the percentage of interventions carried out in the A-rated category is highest, and it decreases gradually for subsequent categories since they are causing less impact on public health.
+
+
+### Request 2: Does employing more professionals increase the number of successful responses? 
+
+A linear statistical model was implemented to investigate whether employing more professional enforcement officers increases the likelihood of establishments successfully responding to enforcement actions. The number of establishments that successfully responded to interventions was calculated by subtracting the total number of formal and informal enforcement actions achieved from the total number of interventions carried out(rated A-E).
+The summary from the model obtained is given below:
+
+```{r, echo=FALSE}
+
+#Model summary
+summary(model1)
+
+```
+
+The output of the linear model shows that for every increase in the "ProfessionalFullTimeEquivalentPosts_occupied" there is an increase in the establishments successfully responding to the intervention by 140.91. 
+
+### Request 3: Examine the relationship.
+
+To further examine the relationship between the proportion of successful responses and the number of employees as a proportion of the number of establishments in the local authority, the below analysis was conducted.
+The proportion of full-time employees(FTE) per establishment was calculated by dividing the professional full-time equivalent post occupied by the total number of establishments in that area. The summary from the model obtained is given below:
+
+```{r, echo=FALSE}
+
+#Model Summary
+summary(model2)
+
+```
+It can be observed from the outcome that for every increase in the proportion of FTE per establishment, there is an increase in the total percentage of interventions carried out. Both the above models show a positive correlation. It can be better understood using the visualizations below (Figure 7 and 8):
+
+```{r, echo=FALSE,warning=FALSE, message=FALSE}
+
+ggplot(data.food.cleaned, aes(y=Establishments_successfully_responded, x=ProfessionalFullTimeEquivalentPosts_occupied.)) + geom_point() + labs(x="Professional Full time equivalent posts occupied", y="Establishments that responded successfully", subtitle="The shaded area shows the 95% CI for the best-fitting regression line") + labs(caption="Figure 7: Plot for linear model for request 2") + theme(plot.caption = element_text(size=10,hjust=0.5)) + geom_smooth(method=lm)
+
+ggplot(data.food.cleaned, aes(y=TotalpercentageofInterventionsachieved_premisesratedA_E, x=Proportion_of_FTE_per_establishment)) + geom_point() + labs(x="ProfessionalFullTimeEquivalentPosts_occupied.", y="TotalpercentageofInterventionsachieved_premisesratedA_E", subtitle="The shaded area shows the 95% CI for the best-fitting regression line") + labs(caption="Figure 8: Plot for linear model for request 3") + theme(plot.caption = element_text(size=10,hjust=0.5)) +geom_smooth(method=lm)
+
+```
+
